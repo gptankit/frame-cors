@@ -1,11 +1,11 @@
 
-FRAME is a JSON-based, highly configurable CORS manager for Asp.Net Web API
+<b>Frame</b> is a JSON-based, highly configurable CORS manager for Asp.Net Web API
 
-<h3><b>Installing FRAME</b></h3>
+<h3><b>Installing Frame</b></h3>
 
-FRAME is available as a nuget package - Frame.CORS. It supports .NET Framework 4.5 and above (till 4.6.2 as of this writing). You can download it from this link - https://www.nuget.org/packages/Frame.Cors/ or search "Frame.CORS" from Nuget Package Manager.
+Frame is available as a nuget package - <i>Frame.CORS</i>. It supports .NET Framework 4.5 and above (till 4.6.2 as of this writing). You can download the latest version from here - https://www.nuget.org/packages/Frame.Cors/ or search "<b>Frame.CORS</b>" from within Nuget Package Manager.
 
-<h3><b>Using FRAME</b></h3>
+<h3><b>Using Frame</b></h3>
 
 After the installation is finished, you will find a new file created in <i>App_Data</i> folder of your application - <i>frm-cors-config.json</i>. This is a CORS configuration file, and has a JSON array structure like this -
 
@@ -18,7 +18,6 @@ After the installation is finished, you will find a new file created in <i>App_D
    "allow-credentials": false,
    "max-age": 0,
    "expose-headers": "*"
-
 },{
    "controllers": "home",
    "allow-origin": "*",
@@ -30,7 +29,7 @@ After the installation is finished, you will find a new file created in <i>App_D
 }]
 </pre>
 
-<b>Note</b>: If this file is not created due to permission issues or similar, please create it manually and insert the above JSON or download the attached file and keep it in App_Data folder.
+<b>Note</b>: If this file is not created due to permission issues or similar, please create it manually and insert the above JSON or download the attached file and keep it in <i>App_Data</i> folder.
 
 Consider each JSON element in the array as a set of CORS config for controllers mentioned in the "controllers" key of the same element. This and other key-value pairs are explained below -
 
@@ -69,11 +68,11 @@ If let's say, there are three controllers (ctrl1, ctrl2, ctrl3) with ctrl1 and c
 }]
 </pre>
 
-After the configuration is final, you simply need to import <i>Frame.CORS</i> namespace reference in <i>App_Start/WebApiConfig.cs</i> file and register FRAME with this piece of code -
+After the configuration is final, you simply need to import <i>Frame.CORS</i> namespace reference in <i>App_Start/WebApiConfig.cs</i> file and register <b>Frame</b> with this piece of code -
 
 <pre>config.RegisterFrame([bool runLocalOnly]);</pre>
 
-The <i>runLocalOnly</i> flag is optional (default = false). Set it to true only if the API is idle and is being currently used for testing puroses.
+The <i>runLocalOnly</i> flag is optional (default = <i>false</i>). Set it to true only if the API is idle and is being currently used for testing puroses.
 
 <h3><b>Important Points</b></h3>
 
