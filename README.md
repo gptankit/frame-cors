@@ -29,7 +29,7 @@ After the installation is finished, you will find a new file created in <i>App_D
 }]
 </pre>
 
-<b>Note</b>: If this file is not created due to permission issues or similar, please create it manually and insert the above JSON or download the attached file and keep it in <i>App_Data</i> folder.
+<b>Note</b>: If this file is not created due to permission issues or similar, please create it manually and insert the above JSON or download the attached file in the repo and keep it in <i>App_Data</i> folder.
 
 Consider each JSON element in the array as a set of CORS config for controllers mentioned in the "controllers" key of the same element. This and other key-value pairs are explained below -
 
@@ -72,7 +72,7 @@ After the configuration is final, you simply need to import <i>Frame.CORS</i> na
 
 <pre>config.RegisterFrame([bool runLocalOnly]);</pre>
 
-The <i>runLocalOnly</i> flag is optional (default = <i>false</i>). Set it to true only if the API is idle and is being currently used for testing puroses.
+The <i>runLocalOnly</i> flag is optional (default = <i>false</i>). Set it to true only if the API is idle and is being currently used for testing purposes.
 
 <h3><b>Important Points</b></h3>
 
