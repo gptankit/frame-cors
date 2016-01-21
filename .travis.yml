@@ -1,0 +1,10 @@
+language: csharp
+
+solution: src/Frame.Cors.sln
+
+install: 
+
+- nuget restore src/Frame.Cors.sln
+
+
+
