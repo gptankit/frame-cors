@@ -55,14 +55,22 @@ namespace Frame.Cors.Interceptor
                     out hasDuplicateRules,
                     (string)ctrl);
 
-                // force set origin as "null" if running locally only
-                if (runLocalOnly)
-                {
-                    apiAC.accessControlAllowOrigin = "null";
-                }
-
                 HttpResponseMessage res = new HttpResponseMessage();
-                ApplyCORSLogicAndGenerateResponse(ref res);
+
+                if (apiAC == null)
+                {
+                    res.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                    res.ReasonPhrase = "Response failed. Atleast one of Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Allow-Headers is missing from the response.";
+                }
+                else {
+                    // force set origin as "null" if running locally only
+                    if (runLocalOnly)
+                    {
+                        apiAC.accessControlAllowOrigin = "null";
+                    }
+
+                    ApplyCORSLogicAndGenerateResponse(ref res);
+                }
 
                 var tcs = new TaskCompletionSource<HttpResponseMessage>();
                 tcs.SetResult(res);
@@ -100,7 +108,7 @@ namespace Frame.Cors.Interceptor
                         {
                             if (reqOrigin.Equals(apiAC.accessControlAllowOrigin, StringComparison.InvariantCultureIgnoreCase) || apiAC.accessControlAllowOrigin.Equals("*"))
                             {
-                                res.Headers.Add("Access-Control-Allow-Origin", reqOrigin);
+                                res.Headers.Add(AccessControlHeader.ALLOW_ORIGIN, reqOrigin);
                                 hasOriginMatch = true;
                             }
                         }
@@ -108,7 +116,7 @@ namespace Frame.Cors.Interceptor
                         {
                             if (apiAC.accessControlAllowOrigin.Equals("*") || apiAC.accessControlAllowOrigin.Equals("null"))
                             {
-                                res.Headers.Add("Access-Control-Allow-Origin", apiAC.accessControlAllowOrigin);
+                                res.Headers.Add(AccessControlHeader.ALLOW_ORIGIN, apiAC.accessControlAllowOrigin);
                                 hasOriginMatch = true;
                             }
                         }
@@ -118,23 +126,33 @@ namespace Frame.Cors.Interceptor
                     {
                         // adding allow-methods header
                         string[] methods = null;
-                        if (!string.IsNullOrEmpty(apiAC.accessControlAllowMethods) && reqMethod != null)
+                        if (!string.IsNullOrEmpty(apiAC.accessControlAllowMethods))
                         {
-                            methods = apiAC.accessControlAllowMethods.Split(',');
-                            List<string> methods_t = new List<string>();
-                            methods_t.AddRange(methods.Where(p => !simpleMethods.Contains(p)).ToList<string>());
-                            apiAC.accessControlAllowMethods = string.Join(",", methods_t);
+                            if (reqMethod != null)
+                            {
+                                methods = apiAC.accessControlAllowMethods.Split(',');
+                                List<string> methods_t = new List<string>();
+                                methods_t.AddRange(methods.Where(p => !simpleMethods.Contains(p)).ToList<string>());
+                                apiAC.accessControlAllowMethods = string.Join(",", methods_t);
 
-                            if (methods_t.Any(p => p.Equals(reqMethod, StringComparison.InvariantCultureIgnoreCase)) || apiAC.accessControlAllowMethods.Equals("*"))
-                            {
-                                res.Headers.Add("Access-Control-Allow-Methods", reqMethod);
-                            }
-                            else
-                            {
-                                if (!simpleMethods.Contains(reqMethod.ToUpper()))
+                                if (methods_t.Any(p => p.Equals(reqMethod, StringComparison.InvariantCultureIgnoreCase)) || apiAC.accessControlAllowMethods.Equals("*"))
                                 {
-                                    failRequest = true;
+                                    res.Headers.Add(AccessControlHeader.ALLOW_METHODS, reqMethod);
                                 }
+                                else
+                                {
+                                    if (!simpleMethods.Contains(reqMethod.ToUpper()))
+                                    {
+                                        failRequest = true;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (apiAC.accessControlAllowMethods == "")
+                            {
+                                failRequest = true;
                             }
                         }
 
@@ -142,40 +160,51 @@ namespace Frame.Cors.Interceptor
                         // check for simple headers
 
                         string[] headers = null;
-                        if (!string.IsNullOrEmpty(apiAC.accessControlAllowHeaders) && reqHeaders != null)
+                        if (!string.IsNullOrEmpty(apiAC.accessControlAllowHeaders))
                         {
-                            headers = apiAC.accessControlAllowHeaders.ToLower().Split(',');
-                            List<string> headers_t = new List<string>();
-                            headers_t.AddRange(headers.Where(p => !simpleHeaders.Contains(p.ToLower())).ToList<string>());
-                            apiAC.accessControlAllowHeaders = string.Join(",", headers_t);
-
-                            List<string> reqHeaders_t = new List<string>();
-                            reqHeaders_t.AddRange(reqHeaders.Where(p => !simpleHeaders.Contains(p.ToLower())).ToList<string>());
-                            string allReqHeaders = string.Join(",", reqHeaders_t);
-
-
-                            if (reqHeaders_t.All(p => headers_t.Contains(p)) || apiAC.accessControlAllowHeaders.Equals("*"))
+                            if (reqHeaders != null)
                             {
-                                if (!string.IsNullOrEmpty(allReqHeaders))
+                                headers = apiAC.accessControlAllowHeaders.ToLower().Split(',');
+                                List<string> headers_t = new List<string>();
+                                headers_t.AddRange(headers.Where(p => !simpleHeaders.Contains(p.ToLower())).ToList<string>());
+                                apiAC.accessControlAllowHeaders = string.Join(",", headers_t);
+
+                                List<string> reqHeaders_t = new List<string>();
+                                reqHeaders_t.AddRange(reqHeaders.Where(p => !simpleHeaders.Contains(p.ToLower())).ToList<string>());
+                                string allReqHeaders = string.Join(",", reqHeaders_t);
+
+
+                                if (reqHeaders_t.All(p => headers_t.Contains(p)) || apiAC.accessControlAllowHeaders.Equals("*"))
                                 {
-                                    res.Headers.Add("Access-Control-Allow-Headers", allReqHeaders);
+                                    if (!string.IsNullOrEmpty(allReqHeaders))
+                                    {
+                                        res.Headers.Add(AccessControlHeader.ALLOW_HEADERS, allReqHeaders);
+                                    }
+                                }
+                                else
+                                {
+                                    failRequest = true;
                                 }
                             }
-                            else
+                        }
+                        else
+                        {
+                            if (apiAC.accessControlAllowHeaders == "")
                             {
                                 failRequest = true;
                             }
                         }
 
 
+
                         if (apiAC.accessControlAllowCredentials.HasValue)
                         {
-                            res.Headers.Add("Access-Control-Allow-Credentials", apiAC.accessControlAllowCredentials.ToString());
+                            res.Headers.Add(AccessControlHeader.ALLOW_CREDENTIALS, apiAC.accessControlAllowCredentials.ToString().ToLower());
                         }
 
                         if (apiAC.accessControlMaxAge.HasValue)
                         {
-                            res.Headers.Add("Access-Control-Max-Age", apiAC.accessControlMaxAge.ToString());
+                            res.Headers.Add(AccessControlHeader.MAX_AGE, apiAC.accessControlMaxAge.ToString());
                         }
 
                         // removals
@@ -183,7 +212,6 @@ namespace Frame.Cors.Interceptor
                         {
                             SetBadResponse(ref res);
                         }
-
                     }
                     else
                     {
@@ -213,12 +241,12 @@ namespace Frame.Cors.Interceptor
 
         private void RemoveCORSHeaders(ref HttpResponseMessage res)
         {
-            res.Headers.Remove("Access-Control-Allow-Origin");
-            res.Headers.Remove("Access-Control-Allow-Methods");
-            res.Headers.Remove("Access-Control-Allow-Headers");
-            res.Headers.Remove("Access-Control-Allow-Credentials");
-            res.Headers.Remove("Access-Control-Max-Age");
-            res.Headers.Remove("Access-Control-Expose-Headers");
+            res.Headers.Remove(AccessControlHeader.ALLOW_ORIGIN);
+            res.Headers.Remove(AccessControlHeader.ALLOW_METHODS);
+            res.Headers.Remove(AccessControlHeader.ALLOW_HEADERS);
+            res.Headers.Remove(AccessControlHeader.ALLOW_CREDENTIALS);
+            res.Headers.Remove(AccessControlHeader.MAX_AGE);
+            res.Headers.Remove(AccessControlHeader.EXPOSE_HEADERS);
         }
 
         protected override void Dispose(bool disposing)

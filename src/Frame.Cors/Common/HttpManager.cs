@@ -40,7 +40,7 @@ namespace Frame.Cors.Common
             }
 
             IEnumerable<string> origins = new List<string>();
-            req.Headers.TryGetValues("Origin", out origins);
+            req.Headers.TryGetValues(AccessControlHeader.ORIGIN, out origins);
             string origin = (origins != null && origins.Count() > 0) ? (origins.FirstOrDefault()) : (null);
 
             isCrossOrigin = (origin == null || origin.Equals(destination, StringComparison.InvariantCultureIgnoreCase)) ? (false) : (true);
@@ -53,7 +53,7 @@ namespace Frame.Cors.Common
             // if options request, then fetch from the request headers                
             if (isPreflight)
             {
-                reqMethod = req.Headers.GetValues("Access-Control-Request-Method").FirstOrDefault();
+                reqMethod = req.Headers.GetValues(AccessControlHeader.REQUEST_METHOD).FirstOrDefault();
             }
 
             // headers
@@ -62,21 +62,28 @@ namespace Frame.Cors.Common
             if (isPreflight)
             {
                 reqHeaders.Clear();
-                if (req.Headers.Contains("Access-Control-Request-Headers"))
+                if (req.Headers.Contains(AccessControlHeader.REQUEST_HEADERS))
                 {
-                    string corsHeaders = req.Headers.GetValues("Access-Control-Request-Headers").FirstOrDefault();
-                    reqHeaders = corsHeaders.Replace(" ","").Split(',');
+                    string corsHeaders = req.Headers.GetValues(AccessControlHeader.REQUEST_HEADERS).FirstOrDefault();
+                    reqHeaders = corsHeaders.Replace(" ", "").Split(',');
                 }
             }
 
             if (accessControlSet != null)
             {
-                apiAC.accessControlAllowOrigin = accessControlSet.AllowOrigin;
-                apiAC.accessControlAllowMethods = accessControlSet.AllowMethods;
-                apiAC.accessControlAllowHeaders = accessControlSet.AllowHeaders;
-                apiAC.accessControlAllowCredentials = accessControlSet.AllowCredentials;
-                apiAC.accessControlMaxAge = accessControlSet.MaxAge;
-                apiAC.accessControlExposeHeaders = accessControlSet.ExposeHeaders;
+                if (accessControlSet.AllowOrigin == null || accessControlSet.AllowMethods == null || accessControlSet.AllowHeaders == null)
+                {
+                    apiAC = null;
+                }
+                else
+                {
+                    apiAC.accessControlAllowOrigin = accessControlSet.AllowOrigin;
+                    apiAC.accessControlAllowMethods = accessControlSet.AllowMethods;
+                    apiAC.accessControlAllowHeaders = accessControlSet.AllowHeaders;
+                    apiAC.accessControlAllowCredentials = accessControlSet.AllowCredentials;
+                    apiAC.accessControlMaxAge = accessControlSet.MaxAge;
+                    apiAC.accessControlExposeHeaders = accessControlSet.ExposeHeaders;
+                }
             }
         }
 
@@ -149,7 +156,7 @@ namespace Frame.Cors.Common
                 {
                     hasParseErrors = true;
                 }
-                
+
                 // if the controller spec is found in the set
                 if (match)
                 {
@@ -166,7 +173,7 @@ namespace Frame.Cors.Common
             foreach (var p in properties)
             {
                 object valobj = p.GetValue(cs);
-                if(valobj != null && valobj.GetType().Equals(typeof(string)))
+                if (valobj != null && valobj.GetType().Equals(typeof(string)))
                 {
                     string val = (string)valobj;
                     if (!string.IsNullOrEmpty(val))
@@ -174,9 +181,9 @@ namespace Frame.Cors.Common
                         val = val.Replace(" ", "");
                         p.SetValue(cs, val);
                     }
-                }                
+                }
             }
 
-        }        
+        }
     }
 }

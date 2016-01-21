@@ -16,7 +16,7 @@ namespace Frame.Cors.Interceptor
         APIAccessControl apiAC;
         bool isCrossOrigin;
         bool hasParseErrors;
-        bool hasDuplicateRules;        
+        bool hasDuplicateRules;
 
         public override void OnActionExecuting(HttpActionContext actionContext)
         {
@@ -35,80 +35,87 @@ namespace Frame.Cors.Interceptor
 
         public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)
         {
-            if (hasParseErrors)
+            if (apiAC == null)
             {
                 actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
-                actionExecutedContext.Response.ReasonPhrase = "Response failed. Error occurred while parsing resource on server.";
+                actionExecutedContext.Response.ReasonPhrase = "Response failed. Atleast one of Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Allow-Headers is missing from the response.";
             }
-            else if (hasDuplicateRules)
-            {
-                actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.Conflict;
-                actionExecutedContext.Response.ReasonPhrase = "Response failed. Duplicate access control rules found on server.";
-            }
-            else
-            {
-                try
+            else {
+                if (hasParseErrors)
                 {
-                    bool hasOriginMatch = false;
-                    ICollection<string> existh = actionExecutedContext.Response.Headers.Select(p => p.Key).ToList<string>();
-
-                    if (!string.IsNullOrEmpty(apiAC.accessControlAllowOrigin))
+                    actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                    actionExecutedContext.Response.ReasonPhrase = "Response failed. Error occurred while parsing resource on server.";
+                }
+                else if (hasDuplicateRules)
+                {
+                    actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.Conflict;
+                    actionExecutedContext.Response.ReasonPhrase = "Response failed. Duplicate access control rules found on server.";
+                }
+                else
+                {
+                    try
                     {
-                        if (reqOrigin != null)
+                        bool hasOriginMatch = false;
+                        ICollection<string> existh = actionExecutedContext.Response.Headers.Select(p => p.Key).ToList<string>();
+
+                        if (!string.IsNullOrEmpty(apiAC.accessControlAllowOrigin))
                         {
-                            if ((reqOrigin.Equals(apiAC.accessControlAllowOrigin, StringComparison.InvariantCultureIgnoreCase) || apiAC.accessControlAllowOrigin.Equals("*")))
+                            if (reqOrigin != null)
                             {
-                                if (!existh.Contains("Access-Control-Allow-Origin"))
+                                if ((reqOrigin.Equals(apiAC.accessControlAllowOrigin, StringComparison.InvariantCultureIgnoreCase) || apiAC.accessControlAllowOrigin.Equals("*")))
                                 {
-                                    actionExecutedContext.Response.Headers.Add("Access-Control-Allow-Origin", reqOrigin);
+                                    if (!existh.Contains(AccessControlHeader.ALLOW_ORIGIN))
+                                    {
+                                        actionExecutedContext.Response.Headers.Add(AccessControlHeader.ALLOW_ORIGIN, reqOrigin);
+                                        hasOriginMatch = true;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (apiAC.accessControlAllowOrigin.Equals("*") || apiAC.accessControlAllowOrigin.Equals("null"))
+                                {
+                                    actionExecutedContext.Response.Headers.Add(AccessControlHeader.ALLOW_ORIGIN, apiAC.accessControlAllowOrigin);
                                     hasOriginMatch = true;
+                                }
+                            }
+                        }
+
+                        if (hasOriginMatch)
+                        {
+                            if (apiAC.accessControlAllowCredentials.HasValue)
+                            {
+                                if (!existh.Contains(AccessControlHeader.ALLOW_CREDENTIALS))
+                                {
+                                    actionExecutedContext.Response.Headers.Add(AccessControlHeader.ALLOW_CREDENTIALS, apiAC.accessControlAllowCredentials.ToString().ToLower());
+                                }
+                            }
+
+                            if (apiAC.accessControlExposeHeaders != null)
+                            {
+                                if (!existh.Contains(AccessControlHeader.EXPOSE_HEADERS))
+                                {
+                                    actionExecutedContext.Response.Headers.Add(AccessControlHeader.EXPOSE_HEADERS, apiAC.accessControlExposeHeaders.ToString());
                                 }
                             }
                         }
                         else
                         {
-                            if (apiAC.accessControlAllowOrigin.Equals("*") || apiAC.accessControlAllowOrigin.Equals("null"))
-                            {
-                                actionExecutedContext.Response.Headers.Add("Access-Control-Allow-Origin", apiAC.accessControlAllowOrigin);
-                                hasOriginMatch = true;
-                            }
+                            actionExecutedContext.Response.Headers.Remove(AccessControlHeader.ALLOW_ORIGIN); // if any
+                            actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.BadRequest;
                         }
                     }
-
-                    if (hasOriginMatch)
+                    catch (Exception resException)
                     {
-                        if (apiAC.accessControlAllowCredentials != null)
-                        {
-                            if (!existh.Contains("Access-Control-Allow-Credentials"))
-                            {
-                                actionExecutedContext.Response.Headers.Add("Access-Control-Allow-Credentials", apiAC.accessControlAllowCredentials.ToString());
-                            }
-                        }
+                        actionExecutedContext.Response.Headers.Remove(AccessControlHeader.ALLOW_ORIGIN);
+                        actionExecutedContext.Response.Headers.Remove(AccessControlHeader.ALLOW_METHODS);
+                        actionExecutedContext.Response.Headers.Remove(AccessControlHeader.ALLOW_HEADERS);
+                        actionExecutedContext.Response.Headers.Remove(AccessControlHeader.ALLOW_CREDENTIALS);
+                        actionExecutedContext.Response.Headers.Remove(AccessControlHeader.MAX_AGE);
+                        actionExecutedContext.Response.Headers.Remove(AccessControlHeader.EXPOSE_HEADERS);
 
-                        if (apiAC.accessControlExposeHeaders != null)
-                        {
-                            if (!existh.Contains("Access-Control-Expose-Headers"))
-                            {
-                                actionExecutedContext.Response.Headers.Add("Access-Control-Expose-Headers", apiAC.accessControlExposeHeaders.ToString());
-                            }
-                        }
+                        actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
                     }
-                    else
-                    {
-                        actionExecutedContext.Response.Headers.Remove("Access-Control-Allow-Origin"); // if any
-                        actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.BadRequest;
-                    }
-                }
-                catch (Exception resException)
-                {
-                    actionExecutedContext.Response.Headers.Remove("Access-Control-Allow-Origin");
-                    actionExecutedContext.Response.Headers.Remove("Access-Control-Allow-Methods");
-                    actionExecutedContext.Response.Headers.Remove("Access-Control-Allow-Headers");
-                    actionExecutedContext.Response.Headers.Remove("Access-Control-Allow-Credentials");
-                    actionExecutedContext.Response.Headers.Remove("Access-Control-Max-Age");
-                    actionExecutedContext.Response.Headers.Remove("Access-Control-Expose-Headers");
-
-                    actionExecutedContext.Response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
                 }
             }
         }
